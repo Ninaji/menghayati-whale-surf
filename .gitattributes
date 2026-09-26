@@ -1,0 +1,6 @@
+# the Unity build and the music must reach GitHub byte for byte
+*.unityweb binary
+*.wasm binary
+*.data binary
+*.m4a binary
+

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#06A3A8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="screen-orientation" content="landscape">
+<meta name="description" content="Menghayati! Whale Surf — swim fast, leap high, land nose first. A whale game for kids, played with your phone sideways.">
+<title>Menghayati! Whale Surf</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Ccircle cx=%2732%27 cy=%2732%27 r=%2730%27 fill=%27%2306A3A8%27/%3E%3Cpath d=%27M12 36c6-10 20-14 30-8l8-6-2 10 2 10-8-6c-10 6-24 2-30-8z%27 fill=%27%23CCFFE6%27/%3E%3C/svg%3E">
+
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #093140; font-family: "Trebuchet MS", "Segoe UI", Arial, sans-serif; }
+  #unity-canvas { width: 100%; height: 100%; display: block; touch-action: none; background: #06A3A8; }
+  #loading, #rotate { position: fixed; inset: 0; display: grid; place-content: center; text-align: center; color: #FFFAEB;
+             background: radial-gradient(circle at 30% 20%, #8fe6df 0%, #06A3A8 45%, #0b5f70 100%); z-index: 10; }
+  #rotate { display: none; z-index: 20; }
+  body.portrait-phone #rotate { display: grid; }
+  .sign { background: linear-gradient(#d9a066, #c98a4b 60%, #a8683a); border: 6px solid #8B5A2B; border-radius: 22px;
+          padding: 26px 34px; box-shadow: 0 12px 0 #6e4420, 0 22px 40px rgba(0,0,0,.35); position: relative; min-width: 280px; max-width: 92vw; }
+  .sign:before, .sign:after { content: ""; position: absolute; top: -34px; width: 8px; height: 34px; background: #E8D5A3; border-radius: 4px; }
+  .sign:before { left: 22%; } .sign:after { right: 22%; }
+  .brand { font-size: 15px; letter-spacing: 4px; color: #CCFFE6; text-shadow: 0 2px 0 #093140; margin: 0 0 4px; }
+  h1 { font-size: clamp(38px, 9vw, 72px); line-height: .9; letter-spacing: -1px; margin: 0 0 10px; color: #FFDB5C;
+       text-shadow: 0 3px 0 #8B5A2B, 0 6px 0 #5a3a1c, 0 8px 18px rgba(0,0,0,.35); }
+  h2 { font-size: clamp(26px, 6vw, 40px); margin: 0 0 8px; color: #FFDB5C; text-shadow: 0 3px 0 #8B5A2B, 0 6px 14px rgba(0,0,0,.3); }
+  .fin { font-size: 54px; margin: 0; filter: drop-shadow(0 4px 0 rgba(0,0,0,.25)); }
+  .phone { display: inline-block; font-size: 64px; margin: 4px 0 10px; animation: turn 1.8s ease-in-out infinite; transform-origin: 50% 60%; }
+  @keyframes turn { 0%, 20% { transform: rotate(0deg); } 55%, 80% { transform: rotate(-90deg); } 100% { transform: rotate(0deg); } }
+  p { margin: 6px 0; font-size: 16px; color: #FFFAEB; text-shadow: 0 1px 0 #093140; }
+  .bar { width: 260px; height: 16px; margin: 14px auto 0; background: #4a2f16; border: 3px solid #E8D5A3; border-radius: 12px; overflow: hidden; }
+  .bar > div { height: 100%; width: 0%; background: linear-gradient(#CCFFE6, #06A3A8); transition: width .2s; }
+  small { display: block; margin-top: 12px; color: #CCFFE6; line-height: 1.5; }
+  #error { display: none; max-width: 420px; padding: 20px 0 0; }
+  button { border: 0; border-radius: 20px; padding: 14px 26px; background: #FFDB5C; color: #093140; font-weight: bold; font-size: 18px; cursor: pointer; box-shadow: 0 6px 0 #b8952a; }
+  .bubble { position: absolute; border-radius: 50%; border: 2px solid rgba(255,255,255,.55); background: rgba(255,255,255,.12); animation: rise 9s linear infinite; }
+  @keyframes rise { from { transform: translateY(110vh) scale(.6); opacity: 0; } 15% { opacity: 1; } to { transform: translateY(-20vh) scale(1.2); opacity: 0; } }
+</style>
+</head>
+<body>
+<canvas id="unity-canvas" tabindex="0" aria-label="Menghayati! Whale Surf. Slide your thumb up and down to steer the whale's nose. Dive deep, then swim up to leap out of the water and land nose first."></canvas>
+<div id="loading">
+  <div class="bubble" style="left:12%;width:22px;height:22px;animation-delay:0s"></div>
+  <div class="bubble" style="left:28%;width:14px;height:14px;animation-delay:2.5s"></div>
+  <div class="bubble" style="left:70%;width:30px;height:30px;animation-delay:1.2s"></div>
+  <div class="bubble" style="left:86%;width:16px;height:16px;animation-delay:4s"></div>
+  <div class="sign">
+    <p class="fin">🐋💦</p>
+    <p class="brand">MENGHAYATI!</p>
+    <h1>WHALE<br>SURF</h1>
+    <p id="status">Warming up the flukes…</p>
+    <div class="bar"><div id="progress"></div></div>
+    <small>Hold your phone sideways.<br>Slide your thumb up and down to steer the nose — dive deep, then swim up to leap!</small>
+    <div id="error"><p id="message"></p><button onclick="location.reload()">TRY AGAIN</button></div>
+  </div>
+</div>
+<div id="rotate" role="dialog" aria-live="polite">
+  <div class="sign">
+    <span class="phone">📱</span>
+    <h2>TURN YOUR PHONE SIDEWAYS</h2>
+    <p>Whale Surf is played in landscape.</p>
+    <small>The game waits for you.</small>
+  </div>
+</div>
+<script>
+  const canvas = document.getElementById('unity-canvas');
+  const statusEl = document.getElementById('status');
+  const progressEl = document.getElementById('progress');
+  const isTouch = () => (navigator.maxTouchPoints || 0) > 0 || 'ontouchstart' in window;   // evaluated on every check (device emulation and hybrids can change it)
+  const config = {
+    dataUrl: 'Build/Web.data.unityweb',
+    frameworkUrl: 'Build/Web.framework.js.unityweb',
+    codeUrl: 'Build/Web.wasm.unityweb',
+    streamingAssetsUrl: 'StreamingAssets',
+    companyName: 'Menghayati',
+    productName: 'Menghayati! Whale Surf',
+    productVersion: '2.0',
+    devicePixelRatio: location.search.indexOf('qa=1') >= 0 ? 2 : Math.min(window.devicePixelRatio || 1, 1.5),   // QA captures render at 2x like a phone
+    webglContextAttributes: location.search.indexOf('qa=1') >= 0 ? { preserveDrawingBuffer: true } : undefined,   // QA captures only
+    autoSyncPersistentDataPath: true
+  };
+  function fail(e) {
+    document.getElementById('error').style.display = 'block';
+    document.getElementById('message').textContent = 'The ocean could not load. Please use a recent Chrome or Safari with WebGL 2. ' + String(e).slice(0, 160);
+    statusEl.textContent = 'Let’s try that again';
+  }
+  // ---- landscape only on phones: show the rotate card in portrait and pause the game meanwhile
+  function portraitPhone() {
+    return isTouch() && window.innerHeight > window.innerWidth && Math.min(window.innerWidth, window.innerHeight) < 900;
+  }
+  function updateOrientation() {
+    const portrait = portraitPhone();
+    document.body.classList.toggle('portrait-phone', portrait);
+    try { if (window.whaleSurf) window.whaleSurf.SendMessage('Whale Surf', 'SetExternalPause', portrait ? 1 : 0); } catch (e) {}
+  }
+  window.addEventListener('resize', updateOrientation);
+  window.addEventListener('orientationchange', () => setTimeout(updateOrientation, 150));
+  // first touch: go fullscreen and ask the browser to lock landscape (Android Chrome); silently ignored elsewhere
+  let lockTried = false;
+  function tryLockLandscape() {
+    if (lockTried || !isTouch()) return;
+    lockTried = true;
+    const el = document.documentElement;
+    const fs = el.requestFullscreen ? el.requestFullscreen({ navigationUI: 'hide' }) : Promise.reject();
+    Promise.resolve(fs).catch(() => {}).then(() => {
+      try { if (screen.orientation && screen.orientation.lock) return screen.orientation.lock('landscape'); } catch (e) {}
+    }).catch(() => {}).then(() => setTimeout(updateOrientation, 300));
+  }
+  canvas.addEventListener('touchend', tryLockLandscape, { passive: true });
+  document.getElementById('rotate').addEventListener('touchend', tryLockLandscape, { passive: true });
+
+  const script = document.createElement('script');
+  script.src = 'Build/Web.loader.js';
+  script.onerror = () => fail('Could not download the game. Check your connection.');
+  script.onload = () => createUnityInstance(canvas, config, p => {
+    progressEl.style.width = Math.round(p * 100) + '%';
+    statusEl.textContent = p < 0.5 ? 'Warming up the flukes… ' + Math.round(p * 100) + '%' : 'Diving in… ' + Math.round(p * 100) + '%';
+  }).then(instance => {
+    window.whaleSurf = instance; window.whaleRush = instance;
+    document.getElementById('loading').style.display = 'none';
+    canvas.focus();
+    updateOrientation();
+  }).catch(fail);
+  document.body.appendChild(script);
+  updateOrientation();
+  document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+  document.addEventListener('gesturestart', e => e.preventDefault());
+</script>
+</body>
+</html>
