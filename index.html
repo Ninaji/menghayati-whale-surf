@@ -79,9 +79,12 @@
     productName: 'Menghayati! Whale Surf',
     productVersion: '2.0',
     devicePixelRatio: location.search.indexOf('qa=1') >= 0 ? 2 : Math.min(window.devicePixelRatio || 1, 1.5),   // QA captures render at 2x like a phone
-    webglContextAttributes: location.search.indexOf('qa=1') >= 0 ? { preserveDrawingBuffer: true } : undefined,   // QA captures only
     autoSyncPersistentDataPath: true
   };
+  // QA captures read the pixels back: only then keep the drawing buffer. For players the key must be ABSENT (the loader
+  // keeps its own default): an explicit undefined replaced it and Unity 6 then failed reading premultipliedAlpha, so no
+  // normal page load started (found on the published site, 25/09)
+  if (location.search.indexOf('qa=1') >= 0) config.webglContextAttributes = { preserveDrawingBuffer: true, powerPreference: 2 };
   function fail(e) {
     document.getElementById('error').style.display = 'block';
     document.getElementById('message').textContent = 'The ocean could not load. Please use a recent Chrome or Safari with WebGL 2. ' + String(e).slice(0, 160);
