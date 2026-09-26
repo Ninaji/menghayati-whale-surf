@@ -5,11 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#06A3A8">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Whale Surf">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="screen-orientation" content="landscape">
 <meta name="description" content="Menghayati! Whale Surf — swim fast, leap high, land nose first. A whale game for kids, played with your phone sideways.">
 <title>Menghayati! Whale Surf</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Ccircle cx=%2732%27 cy=%2732%27 r=%2730%27 fill=%27%2306A3A8%27/%3E%3Cpath d=%27M12 36c6-10 20-14 30-8l8-6-2 10 2 10-8-6c-10 6-24 2-30-8z%27 fill=%27%23CCFFE6%27/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 
 <style>
   * { box-sizing: border-box; }
@@ -101,16 +104,72 @@
   }
   window.addEventListener('resize', updateOrientation);
   window.addEventListener('orientationchange', () => setTimeout(updateOrientation, 150));
-  // first touch: go fullscreen and ask the browser to lock landscape (Android Chrome); silently ignored elsewhere
+
+  // ---- fingers and buttons that are down: a request that needs the player's gesture (the grown-ups' link, FULL SCREEN)
+  // runs in the browser's own release event, or at once when the release already happened (WhaleRushBridge.jslib)
+  window.__wrPointersDown = 0;
+  window.__wrPointerWatch = true;
+  document.addEventListener('pointerdown', () => { window.__wrPointersDown++; }, true);
+  const pointerUp = () => { window.__wrPointersDown = Math.max(0, window.__wrPointersDown - 1); };
+  document.addEventListener('pointerup', pointerUp, true);
+  document.addEventListener('pointercancel', pointerUp, true);
+
+  // ---- full screen (26/09, the client: an icon to go full screen in the phone's browser). The game's FULL SCREEN
+  // button (map and pause) reads state() and arms enter()/exit() for the release of the tap. States: 0 no button (a Home
+  // Screen web app has the whole screen already, or the browser cannot), 1 can enter, 2 in full screen, 3 an iPhone:
+  // Safari has no Fullscreen API there, the button shows the Home Screen way. QA (with qa=1): fs=ios | none | fail
+  const qaFs = /[?&]qa=1/.test(location.search) ? ((location.search.match(/[?&]fs=(\w+)/) || [])[1] || '') : '';
+  window.wrFullscreen = (() => {
+    const root = document.documentElement;
+    const request = root.requestFullscreen || root.webkitRequestFullscreen;
+    const leave = document.exitFullscreen || document.webkitExitFullscreen;
+    const enabled = document.fullscreenEnabled || document.webkitFullscreenEnabled;
+    const iOS = /iPhone|iPod|iPad/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && (navigator.maxTouchPoints || 0) > 1);
+    const element = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+    const standalone = () => navigator.standalone === true || ['fullscreen', 'standalone'].some(m => window.matchMedia && matchMedia('(display-mode: ' + m + ')').matches);
+    const send = method => { try { if (window.whaleSurf) window.whaleSurf.SendMessage('Whale Surf', method); } catch (e) {} };
+    let pending = false, byButton = false;
+    function state() {
+      if (qaFs === 'none') return 0;
+      if (qaFs === 'ios') return 3;
+      if (element()) return 2;
+      if (standalone()) return 0;
+      if (request && enabled) return 1;
+      return iOS ? 3 : 0;
+    }
+    function enter(fromButton) {
+      if (qaFs === 'ios' || qaFs === 'none') return;   // the simulated phone has no Fullscreen API
+      if (qaFs === 'fail') { if (fromButton) send('OnFullscreenFailed'); return; }
+      if (!request || element() || pending) return;
+      pending = true; byButton = !!fromButton;
+      setTimeout(() => { pending = false; }, 1500);   // a browser that never answers must not block the next tap
+      let asked;
+      try { asked = request.call(root, { navigationUI: 'hide' }); } catch (e) { asked = Promise.reject(e); }
+      Promise.resolve(asked).then(() => {
+        pending = false;
+        // phones stay sideways even when turned (Android Chrome: only in full screen; refused elsewhere)
+        try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (e) {}
+      }, () => { pending = false; if (byButton) send('OnFullscreenFailed'); });
+    }
+    function exit() {
+      if (!element() || !leave) return;
+      try { const left = leave.call(document); if (left && left.catch) left.catch(() => {}); } catch (e) {}
+    }
+    function changed() { send('OnFullscreenChange'); setTimeout(updateOrientation, 300); }
+    document.addEventListener('fullscreenchange', changed);
+    document.addEventListener('webkitfullscreenchange', changed);
+    document.addEventListener('webkitfullscreenerror', () => { pending = false; if (byButton) send('OnFullscreenFailed'); });   // iPad (no promise)
+    return { state, enter, exit };
+  })();
+
+  // first touch: go full screen and ask the browser to lock landscape (Android Chrome); silently ignored elsewhere. The
+  // FULL SCREEN button brings it back after the phone leaves it (the back gesture)
   let lockTried = false;
   function tryLockLandscape() {
     if (lockTried || !isTouch()) return;
     lockTried = true;
-    const el = document.documentElement;
-    const fs = el.requestFullscreen ? el.requestFullscreen({ navigationUI: 'hide' }) : Promise.reject();
-    Promise.resolve(fs).catch(() => {}).then(() => {
-      try { if (screen.orientation && screen.orientation.lock) return screen.orientation.lock('landscape'); } catch (e) {}
-    }).catch(() => {}).then(() => setTimeout(updateOrientation, 300));
+    window.wrFullscreen.enter(false);
+    setTimeout(updateOrientation, 300);
   }
   canvas.addEventListener('touchend', tryLockLandscape, { passive: true });
   document.getElementById('rotate').addEventListener('touchend', tryLockLandscape, { passive: true });
