@@ -6,7 +6,7 @@ Swim fast, dive deep, leap high and land nose first. A whale game for kids aged 
 **sideways** (landscape). It also plays in a desktop browser.
 
 - **Slide your thumb up and down** (or drag the mouse) to point the whale's nose.
-- **TAIL** (or a quick swipe) gives a tail stroke for speed.
+- **Tap the right side** of the screen (or swing your thumb fast) for a tail stroke and more speed.
 - Dive, swim up fast and leap: the whale does a trick on her own. Land nose first to keep your chain going.
 - Four islands on the map: **Lesson Lagoon**, **Freestyle Bay** (and the Daily Wave), **Judges' Pier** and
   **Storm Reef** (opens with 5 stamps). Collect 22 stamps and dress your whale on the LOOKS scroll.
